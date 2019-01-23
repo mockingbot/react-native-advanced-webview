@@ -66,9 +66,9 @@ NSString *const RNAdvancedWebViewHtmlType = @"Apple Web Archive pasteboard type"
         _keyboardDisplayRequiresUserAction = NO;
         _contentInsetAdjustmentBehavior = 0;
         _validSchemes = @[@"http", @"https", @"file", @"ftp", @"ws"];
-        
+
         _pendingMessages = [[NSMutableArray alloc] init];
-        
+
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(keyboardWillChange:)
                                                      name:UIKeyboardWillChangeFrameNotification object:nil];
@@ -83,10 +83,10 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
     if(self = [self initWithFrame:CGRectZero])
     {
         super.backgroundColor = [UIColor clearColor];
-        
+
         _automaticallyAdjustContentInsets = YES;
         _contentInset = UIEdgeInsetsZero;
-        
+
         WKWebViewConfiguration* config = [[WKWebViewConfiguration alloc] init];
         config.processPool = processPool;
         @try {
@@ -94,23 +94,23 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
         } @catch (NSException *exception) {
             NSLog(@"%@", exception);
         }
-        
+
         WKPreferences *preferences = [[WKPreferences alloc] init];
         @try {
             [preferences setValue:[NSNumber numberWithBool:YES] forKey:@"allowFileAccessFromFileURLs"];
         } @catch (NSException *exception) {
             NSLog(@"%@", exception);
         }
-        
+
         config.preferences = preferences;
-        
+
         _webView = [[WKWebView alloc] initWithFrame:self.bounds configuration:config];
         _webView.UIDelegate = self;
         _webView.navigationDelegate = self;
-        
+
         [_webView addObserver:self forKeyPath:@"estimatedProgress" options:NSKeyValueObservingOptionNew context:nil];
         [_webView.scrollView addObserver:self forKeyPath:@"contentInset" options:NSKeyValueObservingOptionNew context:nil];
-        
+
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(pasteboardChangedNotification:)
                                                      name:UIPasteboardChangedNotification
@@ -222,20 +222,20 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
         if ([source[@"customUserAgent"] length] != 0 && [_webView respondsToSelector:@selector(setCustomUserAgent:)]) {
             [_webView setCustomUserAgent:source[@"customUserAgent"]];
         }
-        
+
         // Allow loading local files:
         // <WKWebView source={{ file: RNFS.MainBundlePath + '/data/index.html', allowingReadAccessToURL: RNFS.MainBundlePath }} />
         // Only works for iOS 9+. So iOS 8 will simply ignore those two values
         NSString *file = [RCTConvert NSString:source[@"file"]];
         NSString *allowingReadAccessToURL = [RCTConvert NSString:source[@"allowingReadAccessToURL"]];
-        
+
         if (file && [_webView respondsToSelector:@selector(loadFileURL:allowingReadAccessToURL:)]) {
             NSURL *fileURL = [RCTConvert NSURL:file];
             NSURL *baseURL = [RCTConvert NSURL:allowingReadAccessToURL];
             [_webView loadFileURL:fileURL allowingReadAccessToURL:baseURL];
             return;
         }
-        
+
         // Check for a static html source first
         NSString *html = [RCTConvert NSString:source[@"html"]];
         if (html) {
@@ -246,16 +246,16 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
             [_webView loadHTMLString:html baseURL:baseURL];
             return;
         }
-        
+
         NSURLRequest *request = [RCTConvert NSURLRequest:source];
-        
+
         // Because of the way React works, as pages redirect, we actually end up
         // passing the redirect urls back here, so we ignore them if trying to load
         // the same url. We'll expose a call to 'reload' to allow a user to load
         // the existing page.
-        if ([request.URL isEqual:_webView.URL]) {
-            return;
-        }
+//        if ([request.URL isEqual:_webView.URL]) {
+//            return;
+//        }
         if (!request.URL) {
             // Clear the webview
             [_webView loadHTMLString:@"" baseURL:nil];
@@ -375,16 +375,16 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
     NSString *type = [dataString substringToIndex:range.location];
     NSString *data = [dataString substringFromIndex:range.location + range.length];
     UIPasteboard *clipboard = [UIPasteboard generalPasteboard];
-    
+
     if ([type isEqualToString:@"text/html"]) {
         NSMutableDictionary *resourceDictionary = [NSMutableDictionary dictionary];
-        
+
         [resourceDictionary setObject:[data dataUsingEncoding:NSUTF8StringEncoding]  forKey:@"WebResourceData"];
         [resourceDictionary setObject:@"" forKey:@"WebResourceFrameName"];
         [resourceDictionary setObject:@"text/html" forKey:@"WebResourceMIMEType"];
         [resourceDictionary setObject:@"UTF-8" forKey:@"WebResourceTextEncodingName"];
         [resourceDictionary setObject:[_webView.URL absoluteString] forKey:@"WebResourceURL"];
-        
+
         NSDictionary *containerDictionary = [NSDictionary dictionaryWithObjectsAndKeys:resourceDictionary, @"WebMainResource", nil];
         NSDictionary *htmlItems = [NSDictionary dictionaryWithObjectsAndKeys:containerDictionary, RNAdvancedWebViewHtmlType, nil];
         [clipboard addItems: [NSArray arrayWithObjects: htmlItems, nil]];
@@ -409,7 +409,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
             htmlString = [htmlString stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
         }
     }
-    
+
     // Override DataTransfer.prototype.getData
     NSString *dataTransferInjection = [NSString stringWithFormat:
                                        @"(function () {"
@@ -443,16 +443,16 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
     NSURLRequest *request = navigationAction.request;
     NSURL* url = request.URL;
     NSString* scheme = url.scheme;
-    
+
     BOOL isJSNavigation = [scheme isEqualToString:RNAdvancedWebJSNavigationScheme];
-    
+
     if (isJSNavigation) {
         NSURL *url = request.URL;
         NSString *data = url.query;
         data = [data stringByReplacingOccurrencesOfString:@"+" withString:@" "];
         data = [data stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
         if ([url.host isEqualToString:RNAdvancedWebViewJSPostMessageHost]) {
-            
+
             NSMutableDictionary<NSString *, id> *event = [self baseEvent];
             [event addEntriesFromDictionary: @{
                                                @"data": data,
@@ -461,7 +461,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
         } else if ([url.host isEqualToString:RNAdvancedWebViewJSDataTransferSetHost]) {
             [self setDataToPasteboard:data];
         }
-        
+
 
         decisionHandler(WKNavigationActionPolicyCancel);
         return;
@@ -479,7 +479,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
                 return;
             }
         }
-        
+
         if ([self externalAppRequiredToOpenURL:url]) {
             if ([[UIApplication sharedApplication] canOpenURL:url]) {
                 [[UIApplication sharedApplication] openURL:url];
@@ -493,7 +493,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
                 return;
             }
         }
-        
+
         if (_onLoadingStart) {
             // We have this check to filter out iframe requests and whatnot
             BOOL isTopFrame = [url isEqual:request.mainDocumentURL];
@@ -538,7 +538,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
         [self postMessage:message];
     }];
     _pendingMessages = [[NSMutableArray alloc] init];
-    
+
     if (self.messagingEnabled) {
         NSString *source = [NSString stringWithFormat:
                             @"(function() {"
@@ -566,7 +566,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
                             ];
         [webView evaluateJavaScript:source completionHandler:nil];
     }
-    
+
     // Polyfill for Clipboard API
     NSString *dataTransferInjection = [NSString stringWithFormat:
                                        @"(function () {;"
@@ -719,7 +719,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
 - (void)doKeyboardDisplayAutomatically {
     Class class = NSClassFromString(@"WKContentView");
     NSOperatingSystemVersion iOS_11_3_0 = (NSOperatingSystemVersion){11, 3, 0};
-    
+
     if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_11_3_0]) {
         SEL selector = sel_getUid("_startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:");
         Method method = class_getInstanceMethod(class, selector);
